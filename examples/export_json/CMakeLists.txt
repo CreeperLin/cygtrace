@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.9)
+set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -finstrument-functions -Wl,--export-dynamic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -finstrument-functions -Wl,--export-dynamic")
+add_executable(export_json main.c)
+target_link_libraries(export_json cygtrace)
