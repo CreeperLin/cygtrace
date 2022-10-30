@@ -17,15 +17,12 @@ int factorial(int n) { return n > 1 ? n * factorial(n - 1) : 1; }
 int __mangled__(int x) { return x; }
 
 double intv2double(const struct timespec *t_beg, const struct timespec *t_end) {
-  return 1e6 * (t_end->tv_sec - t_beg->tv_sec) +
-         1e-3 * (t_end->tv_nsec - t_beg->tv_nsec);
+  return 1e6 * (t_end->tv_sec - t_beg->tv_sec) + 1e-3 * (t_end->tv_nsec - t_beg->tv_nsec);
 }
 
-void callback(void *this_func, void *call_site, const char *sname,
-              const char *fname, pthread_t tid, const struct timespec *t_beg,
-              const struct timespec *t_end) {
-  printf("name: %s\ttid: %ld\tduration (us): %f\n", sname, tid,
-         intv2double(t_beg, t_end));
+void callback(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid,
+              const struct timespec *t_beg, const struct timespec *t_end) {
+  printf("name: %s\ttid: %ld\tduration (us): %f\n", sname, tid, intv2double(t_beg, t_end));
 }
 
 int main() {

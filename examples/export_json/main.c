@@ -15,8 +15,7 @@ int fibonacci(int n) {
 }
 
 double intv2double(const struct timespec *t_beg, const struct timespec *t_end) {
-  return 1e6 * (t_end->tv_sec - t_beg->tv_sec) +
-         1e-3 * (t_end->tv_nsec - t_beg->tv_nsec);
+  return 1e6 * (t_end->tv_sec - t_beg->tv_sec) + 1e-3 * (t_end->tv_nsec - t_beg->tv_nsec);
 }
 
 int main() {

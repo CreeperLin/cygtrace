@@ -21,10 +21,8 @@ int pt_event = -1;
 int full = 0;
 struct event events[MAX_EVENT_NUM];
 
-void cygtrace_callback_export(void *this_func, void *call_site,
-                              const char *sname, const char *fname,
-                              pthread_t tid, const struct timespec *t_beg,
-                              const struct timespec *t_end) {
+void cygtrace_callback_export(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid,
+                              const struct timespec *t_beg, const struct timespec *t_end) {
   struct event *ev = &events[++pt_event];
   pt_event = pt_event == MAX_EVENT_NUM - 1 ? -1 : pt_event;
   full = full || pt_event == -1;
@@ -35,13 +33,10 @@ void cygtrace_callback_export(void *this_func, void *call_site,
   ev->t_end = *t_end;
 }
 
-double ts2double(const struct timespec *ts) {
-  return 1e6 * ts->tv_sec + 1e-3 * ts->tv_nsec;
-}
+double ts2double(const struct timespec *ts) { return 1e6 * ts->tv_sec + 1e-3 * ts->tv_nsec; }
 
 int cygtrace_export_json(const char *filename) {
-  printf("cygtrace: exporting %d entries\n",
-         full ? MAX_EVENT_NUM : pt_event + 1);
+  printf("cygtrace: exporting %d entries\n", full ? MAX_EVENT_NUM : pt_event + 1);
   __pid_t pid = getpid();
   const char *ev_fmt =
       "{"
@@ -54,7 +49,7 @@ int cygtrace_export_json(const char *filename) {
       "},";
   FILE *fp = fopen(filename, "w");
   if (!fp) {
-    puts("cygtrace: failed to open file");
+    fputs("cygtrace: failed to open file", stderr);
     return 1;
   }
   fputs("{\"traceEvents\":[", fp);
@@ -69,7 +64,7 @@ int cygtrace_export_json(const char *filename) {
   fputs("]}", fp);
   fclose(fp);
   if (ferror(fp)) {
-    puts("cygtrace: I/O error occured");
+    fputs("cygtrace: I/O error occured", stderr);
     return 1;
   }
   return 0;

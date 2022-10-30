@@ -40,8 +40,7 @@ void cygtrace_unset_callback_exit(void) { cyg_callback_exit = NULL; }
 
 int cygtrace_is_enabled(void) { return cygtrace_enabled; }
 
-void cyg_test_cb(void *this_func, void *call_site, const char *sname,
-                 const char *fname, pthread_t tid) {
+void cyg_test_cb(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid) {
   if (this_func) {
     cygtrace_available = 1;
   }
@@ -90,25 +89,20 @@ void __cyg_profile_func_exit(void *this_func, void *call_site) {
   cygtrace_enabled = 1;
 }
 
-void cyg_ev_cb_enter(void *this_func, void *call_site, const char *sname,
-                     const char *fname, pthread_t tid) {
+void cyg_ev_cb_enter(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid) {
   ++cyg_call_level;
-  int idx = cyg_call_level < CYG_EV_MAX_CALL_STACK ? cyg_call_level
-                                                   : CYG_EV_MAX_CALL_STACK - 1;
+  int idx = cyg_call_level < CYG_EV_MAX_CALL_STACK ? cyg_call_level : CYG_EV_MAX_CALL_STACK - 1;
   clock_gettime(CLOCK_MONOTONIC, &cyg_t_beg[idx]);
 }
 
-void cyg_ev_cb_exit(void *this_func, void *call_site, const char *sname,
-                    const char *fname, pthread_t tid) {
+void cyg_ev_cb_exit(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid) {
   struct timespec t_end;
   clock_gettime(CLOCK_MONOTONIC, &t_end);
-  int idx = cyg_call_level < CYG_EV_MAX_CALL_STACK ? cyg_call_level
-                                                   : CYG_EV_MAX_CALL_STACK - 1;
+  int idx = cyg_call_level < CYG_EV_MAX_CALL_STACK ? cyg_call_level : CYG_EV_MAX_CALL_STACK - 1;
   if (idx < 1) return;
   const struct timespec *t_beg = &cyg_t_beg[idx];
   cyg_call_level = cyg_call_level > 0 ? cyg_call_level - 1 : 0;
-  if (cyg_ev_threshold_ns && t_end.tv_sec == t_beg->tv_sec &&
-      t_end.tv_nsec - t_beg->tv_nsec < cyg_ev_threshold_ns)
+  if (cyg_ev_threshold_ns && t_end.tv_sec == t_beg->tv_sec && t_end.tv_nsec - t_beg->tv_nsec < cyg_ev_threshold_ns)
     return;
   if (cyg_ev_callback) {
     cyg_ev_callback(this_func, call_site, sname, fname, tid, t_beg, &t_end);

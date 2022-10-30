@@ -13,12 +13,10 @@ void _slowsort(std::vector<int> &v, int i, int j) {
     v[j] = v[m];
     v[m] = t;
   }
-  _slowsort(v, i, j-1);
+  _slowsort(v, i, j - 1);
 }
 
-void slowsort(std::vector<int> &v) {
-  _slowsort(v, 0, v.size());
-}
+void slowsort(std::vector<int> &v) { _slowsort(v, 0, v.size()); }
 
 int enable_trace(long threshold) {
   if (!cygtrace_is_available()) {
@@ -31,15 +29,6 @@ int enable_trace(long threshold) {
   return 0;
 }
 
-void disable_trace() { cygtrace_event_disable(); }
-
-int export_trace(std::string filename) {
-  return cygtrace_export_json(filename.c_str());
-}
-
 PYBIND11_MODULE(libdemo, m) {
   m.def("slowsort", [](std::vector<int> &v) { slowsort(v); });
-  m.def("enable_trace", [](long th) { enable_trace(th); });
-  m.def("disable_trace", []() { disable_trace(); });
-  m.def("export_trace", [](std::string filename) { export_trace(filename); });
 }

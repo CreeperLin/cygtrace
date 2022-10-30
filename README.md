@@ -6,10 +6,11 @@ gcc instrumentation based tracer for c/c++/pybind11
 
 Requirements:
 
+- gcc
 - cmake
-- pybind11 (optional)
+- python3 with pybind11 (optional)
 
-To build the library:
+To build/install the library:
 
 ```bash
 mkdir build
@@ -27,6 +28,26 @@ mkdir build
 cd build
 cmake ..
 make
+```
+
+To install the python package:
+
+```bash
+pip install .
+```
+
+## Usage
+
+To enable tracing in c/cpp/pybind11 code, add these to compiler args (gcc):
+
+```bash
+-finstrument-functions -Wl,--export-dynamic
+```
+
+To enable tracing in python (pybind11), start the python interpreter like this (assuming library installed in /usr/local/lib):
+
+```bash
+LD_PRELOAD=/usr/local/lib/libcygtrace.so python3 xxx.py
 ```
 
 ## Notes
