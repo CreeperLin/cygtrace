@@ -19,15 +19,9 @@ double intv2double(const struct timespec *t_beg, const struct timespec *t_end) {
 }
 
 int main() {
+  cygtrace_enable_export(0);
   struct timespec t0, t1;
-  if (!cygtrace_is_available()) {
-    printf("cygtrace not available\n");
-    return 1;
-  }
   int n = 10;
-  // cygtrace_event_set_threshold_ns(0);
-  cygtrace_event_set_callback(cygtrace_callback_export);
-  cygtrace_event_enable();
   clock_gettime(CLOCK_MONOTONIC, &t0);
   fibonacci(n);
   clock_gettime(CLOCK_MONOTONIC, &t1);

@@ -2,7 +2,9 @@
 #define CYGTRACE_H_
 
 #ifndef __cplusplus
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #endif
 
 #include <pthread.h>
@@ -51,6 +53,25 @@ void cygtrace_event_unset_callback(void) __attribute__((no_instrument_function))
 
 #ifdef __cplusplus
 };
+#endif
+
+#ifdef __cplusplus
+#include <functional>
+
+__attribute__((no_instrument_function)) int cygtrace_set_callback_enter(
+    std::function<void(CYGTRACE_CALLBACK_SIG)> const &cb_enter) {
+  return cygtrace_set_callback_enter(*cb_enter.target<void (*)(CYGTRACE_CALLBACK_SIG)>());
+}
+
+__attribute__((no_instrument_function)) int cygtrace_set_callback_exit(
+    std::function<void(CYGTRACE_CALLBACK_SIG)> const &cb_exit) {
+  return cygtrace_set_callback_exit(*cb_exit.target<void (*)(CYGTRACE_CALLBACK_SIG)>());
+}
+
+__attribute__((no_instrument_function)) int cygtrace_event_set_callback(
+    std::function<void(CYGTRACE_EV_CALLBACK_SIG)> const &cb_event) {
+  return cygtrace_event_set_callback(*cb_event.target<void (*)(CYGTRACE_EV_CALLBACK_SIG)>());
+}
 #endif
 
 #endif

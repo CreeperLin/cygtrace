@@ -10,6 +10,14 @@ Requirements:
 - cmake
 - python3 with pybind11 (optional)
 
+### Python package
+
+```bash
+pip install .
+```
+
+### System-wise library
+
 To build/install the library:
 
 ```bash
@@ -30,18 +38,47 @@ cmake ..
 make
 ```
 
-To install the python package:
-
-```bash
-pip install .
-```
-
 ## Usage
 
-To enable tracing in c/cpp/pybind11 code, add these to compiler args (gcc):
+### With Python script
+
+Run program/script/command with tracer
+
+```bash
+cygtrace ./path/to/executable
+cygtrace python3 ./path/to/script.py
+```
+
+Demangle json trace file
+
+```bash
+cygtrace -d -f trace.json
+```
+
+Get compiling parameters (gcc)
+
+```bash
+gcc example.c $(cygtrace -I -L -p)
+```
+
+If compiling dynamically loaded library (e.g., pybind11), add -m flag (disables libcygtrace linking)
+
+```bash
+g++ example.cpp $(cygtrace -I -L -p -m)
+```
+
+### Manual instructions
+
+To enable tracing in pybind11 code, add these to the compiler args (gcc):
 
 ```bash
 -finstrument-functions -Wl,--export-dynamic
+```
+
+for c/cpp programs, also link the cygtrace library:
+
+```bash
+-finstrument-functions -Wl,--export-dynamic -lcygtrace
 ```
 
 To enable tracing in python (pybind11), start the python interpreter like this (assuming library installed in /usr/local/lib):

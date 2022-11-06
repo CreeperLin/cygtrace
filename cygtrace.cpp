@@ -1,22 +1,33 @@
 #include "cygtrace.h"
 
 #include <dlfcn.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#ifdef CYGTRACE_DEMANGLE
+#include <cxxabi.h>
+#endif
 
 static int cygtrace_available = -1;
 static int cygtrace_enabled = 0;
 static void (*cyg_callback_enter)(CYGTRACE_CALLBACK_SIG) = NULL;
 static void (*cyg_callback_exit)(CYGTRACE_CALLBACK_SIG) = NULL;
 
-#define CYG_EV_MAX_CALL_STACK 128
+#define CYG_EV_MAX 65536
+#define CYG_TH_MAX 128
 
-static int cyg_call_level = 0;
-static struct timespec cyg_t_beg[CYG_EV_MAX_CALL_STACK];
+static int cyg_ev_pts[CYG_TH_MAX] = {0};
+static struct timespec cyg_ev_t_beg[CYG_TH_MAX][CYG_EV_MAX];
 
 static int cygtrace_ev_enabled = 0;
 static void (*cyg_ev_callback)(CYGTRACE_EV_CALLBACK_SIG) = NULL;
 static long cyg_ev_threshold_ns = 0;
+static inline void cyg_ev_cb_enter(void *this_func, void *call_site, const char *sname, const char *fname,
+                                   pthread_t tid) __attribute__((no_instrument_function));
+static inline void cyg_ev_cb_exit(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid)
+    __attribute__((no_instrument_function));
 
 void cygtrace_enable(void) { cygtrace_enabled = 1; }
 
@@ -57,19 +68,44 @@ int cygtrace_is_available(void) {
   return cygtrace_available;
 }
 
+#define GET_DLINFO              \
+  if (dladdr(this_func, &di)) { \
+    if (di.dli_sname) {         \
+      sname = di.dli_sname;     \
+    } else {                    \
+      sname = "<unknown>";      \
+    }                           \
+    fname = di.dli_fname;       \
+  }
+
+#define DEMANGLE_SNAME                                   \
+  int status;                                            \
+  char *demangled;                                       \
+  demangled = abi::__cxa_demangle(sname, 0, 0, &status); \
+  if (!status) {                                         \
+    sname = demangled;                                   \
+  }
+
+#define FREE_SNAME free(demangled);
+
 void __cyg_profile_func_enter(void *this_func, void *call_site) {
   if (!cygtrace_enabled) return;
   cygtrace_enabled = 0;
   Dl_info di;
-  const char *sname = NULL;
   const char *fname = NULL;
-  if (dladdr(this_func, &di)) {
-    sname = di.dli_sname ? di.dli_sname : "<unknown>";
-    fname = di.dli_fname;
-  }
-  if (cyg_callback_enter) {
+  const char *sname = NULL;
+  GET_DLINFO
+#ifdef CYGTRACE_DEMANGLE
+  DEMANGLE_SNAME
+#endif
+  if (cygtrace_ev_enabled) {
+    cyg_ev_cb_enter(this_func, call_site, sname, fname, pthread_self());
+  } else if (cyg_callback_enter) {
     (*cyg_callback_enter)(this_func, call_site, sname, fname, pthread_self());
   }
+#ifdef CYGTRACE_DEMANGLE
+  FREE_SNAME
+#endif
   cygtrace_enabled = 1;
 }
 
@@ -79,29 +115,42 @@ void __cyg_profile_func_exit(void *this_func, void *call_site) {
   Dl_info di;
   const char *sname = NULL;
   const char *fname = NULL;
-  if (dladdr(this_func, &di)) {
-    sname = di.dli_sname ? di.dli_sname : "<unknown>";
-    fname = di.dli_fname;
-  }
-  if (cyg_callback_exit) {
+  GET_DLINFO
+#ifdef CYGTRACE_DEMANGLE
+  DEMANGLE_SNAME
+#endif
+  if (cygtrace_ev_enabled) {
+    cyg_ev_cb_exit(this_func, call_site, sname, fname, pthread_self());
+  } else if (cyg_callback_exit) {
     (*cyg_callback_exit)(this_func, call_site, sname, fname, pthread_self());
   }
+#ifdef CYGTRACE_DEMANGLE
+  FREE_SNAME
+#endif
   cygtrace_enabled = 1;
 }
 
-void cyg_ev_cb_enter(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid) {
-  ++cyg_call_level;
-  int idx = cyg_call_level < CYG_EV_MAX_CALL_STACK ? cyg_call_level : CYG_EV_MAX_CALL_STACK - 1;
-  clock_gettime(CLOCK_MONOTONIC, &cyg_t_beg[idx]);
+__attribute__((no_instrument_function)) inline int cyg_get_ev_idx(pthread_t tid) { return tid % (CYG_TH_MAX - 1); }
+
+static inline void cyg_ev_cb_enter(void *this_func, void *call_site, const char *sname, const char *fname,
+                                   pthread_t tid) {
+  int idx = cyg_get_ev_idx(tid);
+  int *cyg_ev_pt = &cyg_ev_pts[idx];
+  ++(*cyg_ev_pt);
+  int pt = *cyg_ev_pt < CYG_EV_MAX ? *cyg_ev_pt : CYG_EV_MAX - 1;
+  clock_gettime(CLOCK_MONOTONIC, &cyg_ev_t_beg[idx][pt]);
 }
 
-void cyg_ev_cb_exit(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid) {
+static inline void cyg_ev_cb_exit(void *this_func, void *call_site, const char *sname, const char *fname,
+                                  pthread_t tid) {
   struct timespec t_end;
   clock_gettime(CLOCK_MONOTONIC, &t_end);
-  int idx = cyg_call_level < CYG_EV_MAX_CALL_STACK ? cyg_call_level : CYG_EV_MAX_CALL_STACK - 1;
-  if (idx < 1) return;
-  const struct timespec *t_beg = &cyg_t_beg[idx];
-  cyg_call_level = cyg_call_level > 0 ? cyg_call_level - 1 : 0;
+  int idx = cyg_get_ev_idx(tid);
+  int *cyg_ev_pt = &cyg_ev_pts[idx];
+  int pt = *cyg_ev_pt < CYG_EV_MAX ? *cyg_ev_pt : CYG_EV_MAX - 1;
+  if (pt < 1) return;
+  const struct timespec *t_beg = &cyg_ev_t_beg[idx][pt];
+  *cyg_ev_pt = *cyg_ev_pt > 0 ? *cyg_ev_pt - 1 : 0;
   if (cyg_ev_threshold_ns && t_end.tv_sec == t_beg->tv_sec && t_end.tv_nsec - t_beg->tv_nsec < cyg_ev_threshold_ns)
     return;
   if (cyg_ev_callback) {
@@ -110,14 +159,14 @@ void cyg_ev_cb_exit(void *this_func, void *call_site, const char *sname, const c
 }
 
 void cygtrace_event_enable(void) {
-  cygtrace_set_callback_enter(cyg_ev_cb_enter);
-  cygtrace_set_callback_exit(cyg_ev_cb_exit);
-  cyg_call_level = 0;
-  clock_gettime(CLOCK_MONOTONIC, &cyg_t_beg[cyg_call_level]);
+  memset(cyg_ev_pts, 0, CYG_TH_MAX * sizeof(int));
+  clock_gettime(CLOCK_MONOTONIC, &cyg_ev_t_beg[cyg_get_ev_idx(pthread_self())][0]);
   cygtrace_enable();
+  cygtrace_ev_enabled = 1;
 }
 
 void cygtrace_event_disable(void) {
+  cygtrace_ev_enabled = 0;
   cygtrace_disable();
   cygtrace_unset_callback_enter();
   cygtrace_unset_callback_exit();
