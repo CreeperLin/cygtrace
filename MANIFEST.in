@@ -1,0 +1,12 @@
+include README.md
+include LICENSE
+include VERSION
+include requirements.txt
+include CMakeLists.txt
+include cygtrace.pc.in
+include *.cpp
+include *.c
+include *.h
+prune cygtrace_lib/include
+prune cygtrace_lib/lib
+prune cygtrace_lib/share
