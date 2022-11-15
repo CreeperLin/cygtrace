@@ -19,10 +19,10 @@ struct event {
   struct timespec t_end;
 };
 
-int cyg_event_pt = -1;
-int cyg_event_full = 0;
-struct event cyg_events[MAX_EVENT_NUM];
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static int cyg_event_pt = -1;
+static int cyg_event_full = 0;
+static struct event cyg_events[MAX_EVENT_NUM];
+static pthread_mutex_t cyg_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 const char *ev_fmt_duration =
     "{"
@@ -49,11 +49,11 @@ __attribute__((no_instrument_function)) void cygtrace_callback_export(void *this
                                                                       const char *sname, const char *fname,
                                                                       pthread_t tid, const struct timespec *t_beg,
                                                                       const struct timespec *t_end) {
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&cyg_event_mutex);
   struct event *ev = &cyg_events[++cyg_event_pt];
   cyg_event_pt = cyg_event_pt == MAX_EVENT_NUM - 1 ? -1 : cyg_event_pt;
   cyg_event_full = cyg_event_full || cyg_event_pt == -1;
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&cyg_event_mutex);
   strcpy(ev->sname, sname);
   strcpy(ev->fname, fname);
   ev->tid = tid;

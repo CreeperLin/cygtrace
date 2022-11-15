@@ -10,8 +10,8 @@ include(GNUInstallDirs)
 add_library(cygtrace SHARED
     cygtrace.cpp
 )
-if(CYGTRACE_CXA_DEMANGLE)
-    target_compile_definitions(cygtrace PRIVATE CXA_DEMANGLE=1)
+if(CYGTRACE_DEMANGLE)
+    target_compile_definitions(cygtrace PRIVATE CYGTRACE_DEMANGLE=1)
 endif()
 set_target_properties(cygtrace PROPERTIES
     VERSION ${CMAKE_PROJECT_VERSION}

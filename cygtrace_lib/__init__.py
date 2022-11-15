@@ -33,7 +33,7 @@ def cygtrace_demangle(path):
         ev['name'] = d_name
     output = os.path.splitext(path)[0] + '.demangled.json'
     with open(output, 'w') as f:
-        json.dump(trace, f)
+        json.dump(trace, f, separators=(',', ':'), indent=None)
 
 
 def get_includes():
@@ -44,12 +44,13 @@ def get_libs():
     return '-L' + os.path.join(root_dir, 'lib')
 
 
-def get_params(compiler='gcc', linking=True):
+def get_params(compiler='gcc', linking=True, instrument=True):
     args = []
     if compiler == 'gcc':
         if linking:
             args.append('-lcygtrace')
-        args.extend(['-finstrument-functions', '-Wl,--export-dynamic'])
+        if instrument:
+            args.extend(['-finstrument-functions', '-Wl,--export-dynamic'])
     else:
         raise NotImplementedError
     return ' '.join(args)
@@ -61,6 +62,7 @@ def cygtrace_main():
     parser.add_argument('-I', '--includes', action='store_true')
     parser.add_argument('-L', '--libs', action='store_true')
     parser.add_argument('-m', '--module', action='store_true')
+    parser.add_argument('-n', '--noinst', action='store_true')
     parser.add_argument('-p', '--params', action='store_true')
     parser.add_argument('-c', '--compiler', default='gcc')
     parser.add_argument('-f', '--file', required=False, default=None)
@@ -81,5 +83,5 @@ def cygtrace_main():
         if args.libs:
             output.append(get_libs())
         if args.params:
-            output.append(get_params(compiler=args.compiler, linking=(not args.module)))
+            output.append(get_params(compiler=args.compiler, linking=(not args.module), instrument=(not args.noinst)))
         print(' '.join(output))

@@ -1,6 +1,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+namespace test {
+
 void _slowsort(std::vector<int> &v, int i, int j) {
   if (i >= j) return;
   int m = (i + j) / 2;
@@ -18,4 +20,6 @@ void slowsort(std::vector<int> &v) { _slowsort(v, 0, v.size()); }
 
 PYBIND11_MODULE(libdemo, m) {
   m.def("slowsort", [](std::vector<int> &v) { slowsort(v); });
+}
+
 }

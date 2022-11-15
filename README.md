@@ -61,7 +61,7 @@ Get compiling parameters (gcc)
 gcc example.c $(cygtrace -I -L -p)
 ```
 
-If compiling dynamically loaded library (e.g., pybind11), add -m flag (disables libcygtrace linking)
+When compiling dynamically loaded libraries (e.g., pybind11), add -m flag (disables libcygtrace linking)
 
 ```bash
 g++ example.cpp $(cygtrace -I -L -p -m)
@@ -89,6 +89,11 @@ LD_PRELOAD=/usr/local/lib/libcygtrace.so python3 xxx.py
 
 ## Notes
 
+- To view JSON-formatted profiling results, go to ```chrome://tracing``` or [Perfetto UI](https://ui.perfetto.dev/)
+- the names of functions with ```static``` keyword or within anonymous namespace are unobtainable in the tracer (appear as "\<unknown\>")
+
+## Troubleshooting
+
 - CMake could not find pybind11
 
 ```bash
@@ -100,5 +105,3 @@ pip3 install "pybind11[global]"
 ```bash
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 ```
-
-- To view JSON-formatted profiling results, go to ```chrome://tracing``` or [Perfetto UI](https://ui.perfetto.dev/)

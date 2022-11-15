@@ -24,6 +24,7 @@ static struct timespec cyg_ev_t_beg[CYG_TH_MAX][CYG_EV_MAX];
 static int cygtrace_ev_enabled = 0;
 static void (*cyg_ev_callback)(CYGTRACE_EV_CALLBACK_SIG) = NULL;
 static long cyg_ev_threshold_ns = 0;
+
 static inline void cyg_ev_cb_enter(void *this_func, void *call_site, const char *sname, const char *fname,
                                    pthread_t tid) __attribute__((no_instrument_function));
 static inline void cyg_ev_cb_exit(void *this_func, void *call_site, const char *sname, const char *fname, pthread_t tid)
@@ -88,6 +89,28 @@ int cygtrace_is_available(void) {
 
 #define FREE_SNAME free(demangled);
 
+#define INVOKE_ENTER                                                           \
+  if (cygtrace_ev_enabled) {                                                   \
+    cyg_ev_cb_enter(this_func, call_site, sname, fname, pthread_self());       \
+  } else if (cyg_callback_enter) {                                             \
+    (*cyg_callback_enter)(this_func, call_site, sname, fname, pthread_self()); \
+  }
+
+#define INVOKE_EXIT                                                           \
+  if (cygtrace_ev_enabled) {                                                  \
+    cyg_ev_cb_exit(this_func, call_site, sname, fname, pthread_self());       \
+  } else if (cyg_callback_exit) {                                             \
+    (*cyg_callback_exit)(this_func, call_site, sname, fname, pthread_self()); \
+  }
+
+void cygtrace_invoke_enter(void *this_func, void *call_site, const char *sname, const char *fname) {
+  INVOKE_ENTER
+}
+
+void cygtrace_invoke_exit(void *this_func, void *call_site, const char *sname, const char *fname) {
+  INVOKE_EXIT
+}
+
 void __cyg_profile_func_enter(void *this_func, void *call_site) {
   if (!cygtrace_enabled) return;
   cygtrace_enabled = 0;
@@ -98,11 +121,7 @@ void __cyg_profile_func_enter(void *this_func, void *call_site) {
 #ifdef CYGTRACE_DEMANGLE
   DEMANGLE_SNAME
 #endif
-  if (cygtrace_ev_enabled) {
-    cyg_ev_cb_enter(this_func, call_site, sname, fname, pthread_self());
-  } else if (cyg_callback_enter) {
-    (*cyg_callback_enter)(this_func, call_site, sname, fname, pthread_self());
-  }
+  INVOKE_ENTER
 #ifdef CYGTRACE_DEMANGLE
   FREE_SNAME
 #endif
@@ -119,11 +138,7 @@ void __cyg_profile_func_exit(void *this_func, void *call_site) {
 #ifdef CYGTRACE_DEMANGLE
   DEMANGLE_SNAME
 #endif
-  if (cygtrace_ev_enabled) {
-    cyg_ev_cb_exit(this_func, call_site, sname, fname, pthread_self());
-  } else if (cyg_callback_exit) {
-    (*cyg_callback_exit)(this_func, call_site, sname, fname, pthread_self());
-  }
+  INVOKE_EXIT
 #ifdef CYGTRACE_DEMANGLE
   FREE_SNAME
 #endif
